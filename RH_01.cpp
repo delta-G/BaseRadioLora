@@ -69,11 +69,29 @@ void loop()
 	parser.run();
 }
 
-void sendToRadio(char* p){
+void sendToRadio(char *p) {
 //	Serial.print("Sending ");
 //	Serial.println(p);
-	uint8_t len = strlen(p);
-	radio.send((uint8_t*)p, len);
-	radio.waitPacketSent();
+	if (p[1] == 'X') {
+		controllerDataToRaw(p);
+	} else {
+		uint8_t len = strlen(p);
+		radio.send((uint8_t*) p, len);
+		radio.waitPacketSent();
+	}
 }
 
+void controllerDataToRaw(char* p){
+
+	uint8_t rawArray[16];
+	rawArray[0] = '<';
+	for (int i = 0; i < 14; i++){
+		char temp[3] = {p[2+(2*i)], p[3+(2*i)] , 0};
+		rawArray[1+i] = strtoul(temp, NULL, HEX);
+	}
+	rawArray[15] = '>';
+
+	radio.send(rawArray, 16);
+	radio.waitPacketSent();
+
+}

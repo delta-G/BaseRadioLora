@@ -15,5 +15,6 @@ void loop();
 
 void sendToRadio(char*);
 
+void controllerDataToRaw(char*);
 
 #endif /* _RH_01_H_ */
