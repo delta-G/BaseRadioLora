@@ -6,6 +6,9 @@
 
 #define RF95_FREQ 915.0
 
+#define MAX_MESSAGE_SIZE_RH RH_RF95_MAX_MESSAGE_LEN
+
+
 RH_RF95 radio(RFM95_CS, RFM95_INT);
 
 StreamParser parser(&Serial, START_OF_PACKET, END_OF_PACKET, sendToRadio);
@@ -46,28 +49,88 @@ void setup() {
 
 void loop()
 {
-	// If anything is coming in on radio, just ship it out to serial
-	// the serial parsers on either end can handle it however it comes.
-	if (radio.available()){
+	listenToRadio();
 
-		uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-		uint8_t len = sizeof(buf);
-
-		if(radio.recv(buf, &len)){
-			//radio.recv doesn't put a null on the end of the string.
-			//it sends packets of bytes.
-			//we need to set up a constant size packet system.
-			for(uint8_t i = 0; i < RH_RF95_MAX_MESSAGE_LEN; i++){
-				if(buf[i] == '>' && buf[i+1] != '<'){
-					buf[i + 1] = 0;
-				}
-			}
-			Serial.print((char*)buf);
-		}
-	}
+	reportSignalStrength();
 
 	parser.run();
 }
+
+
+void listenToRadio() {
+	if (radio.available()) {
+
+		uint8_t buf[MAX_MESSAGE_SIZE_RH];
+		uint8_t len = sizeof(buf);
+
+		if (radio.recv(buf, &len)) {
+			processRadioBuffer(buf);
+		}
+	}
+
+}
+
+void reportSignalStrength() {
+
+	static uint32_t pm = millis();
+	uint32_t cm = millis();
+
+	if (cm - pm >= 5000) {
+		pm = cm;
+		Serial.print("<SNR,");
+		Serial.print(radio.lastSNR());
+		Serial.print("_,_RSSI,");
+		Serial.print(radio.lastRssi());
+		Serial.print(">");
+	}
+}
+
+void processRadioBuffer(uint8_t *aBuf) {
+
+	static boolean receiving = false;
+	static char commandBuffer[100];
+	static int index;
+
+	// radio.racv doesn't put any null terminator, so we can't use
+	// string functions, have to scroll through and pick stuff out.
+	for (int i = 0; i < MAX_MESSAGE_SIZE_RH; i++) {
+		char c = aBuf[i];
+
+		if (c == START_OF_PACKET) {
+			if ((aBuf[i + 1] >= 0x11) && (aBuf[i + 1] <= 0x13)) {
+				handleRawData(&aBuf[i]);
+				i += (aBuf[i+2] -1);
+				continue;
+			}
+			receiving = true;
+			index = 0;
+			commandBuffer[0] = 0;
+		}
+		if (receiving) {
+			commandBuffer[index] = c;
+			commandBuffer[++index] = 0;
+			if (index >= 100) {
+				index--;
+			}
+			if (c == END_OF_PACKET) {
+				receiving = false;
+				Serial.print(commandBuffer);
+			}
+		}
+	}
+}
+
+void handleRawData(uint8_t* p){
+
+//	Serial.print("<Raw_Dump>");
+	int numBytes = p[2];
+
+	for(int i=0; i<numBytes; i++){
+		Serial.write(p[i]);
+	}
+}
+
+
 
 void sendToRadio(char *p) {
 //	Serial.print("Sending ");
@@ -95,3 +158,5 @@ void controllerDataToRaw(char* p){
 	radio.waitPacketSent();
 
 }
+
+
