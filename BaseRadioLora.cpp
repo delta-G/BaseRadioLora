@@ -1,4 +1,4 @@
-#include "RH_01.h"
+#include "BaseRadioLora.h"
 
 #define RFM95_CS 10
 #define RFM95_RST 9
