@@ -21,6 +21,15 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 
 #include "BaseRadioLora.h"
 
+//#define DEBUG_OUT Serial
+
+#ifdef DEBUG_OUT
+#define DEBUG(x) DEBUG_OUT.println(x)
+#else
+#define DEBUG(x)
+#endif
+
+
 #define RFM95_CS 10
 #define RFM95_RST 9
 #define RFM95_INT 2
@@ -38,10 +47,12 @@ void setup() {
 	pinMode(RFM95_RST, OUTPUT);
 	digitalWrite(RFM95_RST, HIGH);
 
+	parser.setRawCallback(sendToRadioRaw);
+
 	Serial.begin(115200);
 	delay(100);
 
-	Serial.println("Arduino RH-01 UNO Test!");
+	DEBUG("Arduino RH-01 UNO Test!");
 
 	// manual reset
 	digitalWrite(RFM95_RST, LOW);
@@ -50,20 +61,20 @@ void setup() {
 	delay(10);
 
 	while (!radio.init()) {
-		Serial.println("LoRa radio init failed");
+		DEBUG("LoRa radio init failed");
 		while (1)
 			;
 	}
-	Serial.println("LoRa radio init OK!");
+	DEBUG("LoRa radio init OK!");
 
 	// Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM
 	if (!radio.setFrequency(RF95_FREQ)) {
-		Serial.println("setFrequency failed");
+		DEBUG("setFrequency failed");
 		while (1)
 			;
 	}
-	Serial.print("Set Freq to: ");
-	Serial.println(RF95_FREQ);
+	DEBUG("Set Freq to: ");
+	DEBUG(RF95_FREQ);
 
 	radio.setTxPower(23, false);
 }
@@ -118,8 +129,8 @@ void processRadioBuffer(uint8_t *aBuf) {
 		char c = aBuf[i];
 
 		if (c == START_OF_PACKET) {
-			if ((aBuf[i + 1] >= 0x11) && (aBuf[i + 1] <= 0x13)) {
-				handleRawData(&aBuf[i]);
+			if ((aBuf[i + 1] >= 0x11) && (aBuf[i + 1] <= 0x14)) {
+				handleRawRadio(&aBuf[i]);
 				i += (aBuf[i+2] -1);
 				continue;
 			}
@@ -141,7 +152,7 @@ void processRadioBuffer(uint8_t *aBuf) {
 	}
 }
 
-void handleRawData(uint8_t* p){
+void handleRawRadio(uint8_t* p){
 
 //	Serial.print("<Raw_Dump>");
 	int numBytes = p[2];
@@ -163,6 +174,12 @@ void sendToRadio(char *p) {
 		radio.send((uint8_t*) p, len);
 		radio.waitPacketSent();
 	}
+}
+
+void sendToRadioRaw(char* p) {
+	uint8_t len = p[2];
+	radio.send((uint8_t*) p, len);
+	radio.waitPacketSent();
 }
 
 void controllerDataToRaw(char* p){

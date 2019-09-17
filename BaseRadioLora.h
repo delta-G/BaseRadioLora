@@ -36,9 +36,10 @@ void loop();
 
 void processRadioBuffer(uint8_t*);
 
-void handleRawData(uint8_t*);
+void handleRawRadio(uint8_t*);
 
 void sendToRadio(char*);
+void sendToRadioRaw(char*);
 void listenToRadio();
 
 void controllerDataToRaw(char*);
