@@ -152,49 +152,51 @@ void processRadioBuffer(uint8_t *aBuf) {
 	}
 }
 
-void handleRawRadio(uint8_t* p){
 
-//	Serial.print("<Raw_Dump>");
+void handleRawRadio(uint8_t *p) {
+
 	int numBytes = p[2];
+	//  If this is the data dump (with the robot LORA adding it's snr and rssi
+	if ((p[1] == 0x13) && (numBytes == ROBOT_DATA_DUMP_SIZE + 2) && (p[numBytes - 1] == '>')) {
+		// add our SNR and RSSI
+		uint8_t newMess[ROBOT_DATA_DUMP_SIZE + 4];
+		memcpy(newMess, p, ROBOT_DATA_DUMP_SIZE + 1); // get everything but the '>'
+		// Add on the snr and rssi values and cap with a new '>'
+		uint8_t snr = (uint8_t) (radio.lastSNR());
+		int rs = radio.lastRssi();
+		uint8_t rssi = (uint8_t) (abs(rs));
+		newMess[2] = ROBOT_DATA_DUMP_SIZE + 4;
+		newMess[ROBOT_DATA_DUMP_SIZE + 1] = snr;
+		newMess[ROBOT_DATA_DUMP_SIZE + 2] = rssi;
+		newMess[ROBOT_DATA_DUMP_SIZE + 3] = '>';
+		numBytes = ROBOT_DATA_DUMP_SIZE + 4;
+		for (int i = 0; i < numBytes; i++) {
+			Serial.write(p[i]);
+		}
 
-	for(int i=0; i<numBytes; i++){
-		Serial.write(p[i]);
+	} else {
+
+		//  If properly formatted message
+		if ((numBytes < 100) && (p[numBytes - 1] == '>')) {
+			for (int i = 0; i < numBytes; i++) {
+				Serial.write(p[i]);
+			}
+		}
 	}
 }
 
 
 
 void sendToRadio(char *p) {
-//	Serial.print("Sending ");
-//	Serial.println(p);
-	if (p[1] == 'X') {
-		controllerDataToRaw(p);
-	} else {
-		uint8_t len = strlen(p);
-		radio.send((uint8_t*) p, len);
-		radio.waitPacketSent();
-	}
+	uint8_t len = strlen(p);
+	radio.send((uint8_t*) p, len);
+	radio.waitPacketSent();
 }
 
 void sendToRadioRaw(char* p) {
 	uint8_t len = p[2];
 	radio.send((uint8_t*) p, len);
 	radio.waitPacketSent();
-}
-
-void controllerDataToRaw(char* p){
-
-	uint8_t rawArray[16];
-	rawArray[0] = '<';
-	for (int i = 0; i < 14; i++){
-		char temp[3] = {p[2+(2*i)], p[3+(2*i)] , 0};
-		rawArray[1+i] = strtoul(temp, NULL, HEX);
-	}
-	rawArray[15] = '>';
-
-	radio.send(rawArray, 16);
-	radio.waitPacketSent();
-
 }
 
 
