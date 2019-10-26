@@ -90,7 +90,7 @@ void loop()
 void listenToRadio() {
 	if (radio.available()) {
 
-		uint8_t buf[MAX_MESSAGE_SIZE_RH];
+		uint8_t buf[MAX_MESSAGE_SIZE_RH] = {0};
 		uint8_t len = sizeof(buf);
 
 		if (radio.recv(buf, &len)) {
