@@ -42,6 +42,4 @@ void sendToRadio(char*);
 void sendToRadioRaw(char*);
 void listenToRadio();
 
-void reportSignalStrength();
-
 #endif /* _RH_01_H_ */

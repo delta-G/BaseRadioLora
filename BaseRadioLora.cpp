@@ -36,6 +36,7 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 
 #define RF95_FREQ 915.0
 
+//  This currently works out to 251  (255 buffer size - 4 byte header)
 #define MAX_MESSAGE_SIZE_RH RH_RF95_MAX_MESSAGE_LEN
 
 
@@ -82,9 +83,6 @@ void setup() {
 void loop()
 {
 	listenToRadio();
-
-	reportSignalStrength();
-
 	parser.run();
 }
 
@@ -100,21 +98,6 @@ void listenToRadio() {
 		}
 	}
 
-}
-
-void reportSignalStrength() {
-
-	static uint32_t pm = millis();
-	uint32_t cm = millis();
-
-	if (cm - pm >= 5000) {
-		pm = cm;
-		Serial.print("<SNR,");
-		Serial.print(radio.lastSNR());
-		Serial.print("_,_RSSI,");
-		Serial.print(radio.lastRssi());
-		Serial.print(">");
-	}
 }
 
 void processRadioBuffer(uint8_t *aBuf) {
