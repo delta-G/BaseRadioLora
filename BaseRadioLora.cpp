@@ -154,12 +154,13 @@ void handleRawRadio(uint8_t *p) {
 		newMess[ROBOT_DATA_DUMP_SIZE + 3] = '>';
 		numBytes = ROBOT_DATA_DUMP_SIZE + 4;
 		for (int i = 0; i < numBytes; i++) {
-			Serial.write(p[i]);
+			Serial.write(newMess[i]);
 		}
 
 	} else {
 
 		//  If properly formatted message
+//		Serial.print("<Proper Message>");
 		if ((numBytes < 100) && (p[numBytes - 1] == '>')) {
 			for (int i = 0; i < numBytes; i++) {
 				Serial.write(p[i]);
