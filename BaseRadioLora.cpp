@@ -29,6 +29,7 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 #define DEBUG(x)
 #endif
 
+#define HOLDING_BUFFER_SIZE 248
 
 #define RFM95_CS 10
 #define RFM95_RST 9
@@ -42,13 +43,23 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 
 RH_RF95 radio(RFM95_CS, RFM95_INT);
 
-StreamParser parser(&Serial, START_OF_PACKET, END_OF_PACKET, sendToRadio);
+StreamParser parser(&Serial, START_OF_PACKET, END_OF_PACKET, handleSerial);
+
+
+uint32_t lastFlushTime;
+uint32_t maxFlushInterval = 1000;
+
+uint8_t holdingBuffer[HOLDING_BUFFER_SIZE];
+uint8_t holdingSize = 0;
+
+boolean flushOnNextRaw = true;
+
 
 void setup() {
 	pinMode(RFM95_RST, OUTPUT);
 	digitalWrite(RFM95_RST, HIGH);
 
-	parser.setRawCallback(sendToRadioRaw);
+	parser.setRawCallback(handleSerialRaw);
 
 	Serial.begin(115200);
 	delay(100);
@@ -84,6 +95,12 @@ void loop()
 {
 	listenToRadio();
 	parser.run();
+	if (holdingSize == 0){
+		lastFlushTime = millis();  // don't start timer if we don't have anything to send.
+	}
+	if(millis() - lastFlushTime >= maxFlushInterval){
+		flush();
+	}
 }
 
 
@@ -105,6 +122,8 @@ void processRadioBuffer(uint8_t *aBuf) {
 	static boolean receiving = false;
 	static char commandBuffer[100];
 	static int index;
+
+	flushOnNextRaw = true;
 
 	// radio.racv doesn't put any null terminator, so we can't use
 	// string functions, have to scroll through and pick stuff out.
@@ -169,18 +188,47 @@ void handleRawRadio(uint8_t *p) {
 	}
 }
 
+void addToHolding(uint8_t* p, uint8_t aSize){
+	if(HOLDING_BUFFER_SIZE - holdingSize < aSize){
+		//  Not enough room so clear the buffer now
+		flush();
+	}
+	memcpy(holdingBuffer, p, aSize);
+	holdingSize += aSize;
+}
 
+void addToHolding(char* p){
+	addToHolding((uint8_t*)p, strlen(p));
+}
 
 void sendToRadio(char *p) {
-	uint8_t len = strlen(p);
-	radio.send((uint8_t*) p, len);
+	sendToRadio((uint8_t*) p, strlen(p));
+}
+
+void sendToRadio(uint8_t* p, uint8_t aSize){
+	radio.send(p, aSize);
 	radio.waitPacketSent();
 }
 
-void sendToRadioRaw(char* p) {
+void flush(){
+	sendToRadio(holdingBuffer, holdingSize);
+	holdingSize = 0;
+	lastFlushTime = millis();
+}
+
+void handleSerialRaw(char* p) {
 	uint8_t len = p[2];
-	radio.send((uint8_t*) p, len);
-	radio.waitPacketSent();
+	addToHolding((uint8_t*) p, len);
+	if(flushOnNextRaw){
+		flushOnNextRaw = false;
+		flush();
+	}
 }
 
-
+void handleSerial(char* p){
+	if(strcmp(p, "<FFF>") ==  0){
+		flush();
+	} else {
+		addToHolding(p);
+	}
+}

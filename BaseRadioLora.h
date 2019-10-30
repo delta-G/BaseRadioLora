@@ -35,11 +35,16 @@ void setup();
 void loop();
 
 void processRadioBuffer(uint8_t*);
-
 void handleRawRadio(uint8_t*);
+void handleSerialRaw(char*);
+void handleSerial(char*);
 
 void sendToRadio(char*);
-void sendToRadioRaw(char*);
+void sendToRadio(uint8_t*, uint8_t);
 void listenToRadio();
+
+void addToHolding(uint8_t*, uint8_t);
+void addToHolding(char*);
+void flush();
 
 #endif /* _RH_01_H_ */
