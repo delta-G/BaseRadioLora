@@ -193,7 +193,7 @@ void addToHolding(uint8_t* p, uint8_t aSize){
 		//  Not enough room so clear the buffer now
 		flush();
 	}
-	memcpy(holdingBuffer, p, aSize);
+	memcpy(holdingBuffer + holdingSize, p, aSize);
 	holdingSize += aSize;
 }
 
@@ -226,7 +226,7 @@ void handleSerialRaw(char* p) {
 }
 
 void handleSerial(char* p){
-	if(strcmp(p, "<FFF>") ==  0){
+	if(strcmp(p, "<FFE>") ==  0){
 		flush();
 	} else {
 		addToHolding(p);
