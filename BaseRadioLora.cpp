@@ -55,6 +55,12 @@ uint8_t holdingSize = 0;
 boolean flushOnNextRaw = true;
 
 
+int freeRam() {
+  extern int __heap_start, *__brkval;
+  int v;
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+}
+
 void setup() {
 	pinMode(RFM95_RST, OUTPUT);
 	digitalWrite(RFM95_RST, HIGH);
@@ -207,6 +213,13 @@ void sendToRadio(char *p) {
 
 void sendToRadio(uint8_t* p, uint8_t aSize){
 	radio.send(p, aSize);
+	if(strcmp((const char*)p, "<RAMCHECK>") == 0){
+		Serial.print("<");
+		Serial.print(freeRam());
+		Serial.print(">");
+	}
+	uint8_t len = strlen((const char*)p);
+	radio.send((uint8_t*) p, len);
 	radio.waitPacketSent();
 }
 
