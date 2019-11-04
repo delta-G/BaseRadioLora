@@ -44,6 +44,12 @@ RH_RF95 radio(RFM95_CS, RFM95_INT);
 
 StreamParser parser(&Serial, START_OF_PACKET, END_OF_PACKET, sendToRadio);
 
+int freeRam() {
+  extern int __heap_start, *__brkval;
+  int v;
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+}
+
 void setup() {
 	pinMode(RFM95_RST, OUTPUT);
 	digitalWrite(RFM95_RST, HIGH);
@@ -172,6 +178,11 @@ void handleRawRadio(uint8_t *p) {
 
 
 void sendToRadio(char *p) {
+	if(strcmp(p, "<RAMCHECK>") == 0){
+		Serial.print("<");
+		Serial.print(freeRam());
+		Serial.print(">");
+	}
 	uint8_t len = strlen(p);
 	radio.send((uint8_t*) p, len);
 	radio.waitPacketSent();
