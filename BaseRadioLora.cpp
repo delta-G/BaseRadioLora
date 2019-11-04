@@ -56,7 +56,7 @@ boolean flushOnNextRaw = true;
 
 
 int freeRam() {
-  extern int __heap_start, *__brkval;
+  extern volatile int __heap_start, *__brkval;
   int v;
   return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
 }
@@ -121,8 +121,21 @@ void listenToRadio() {
 		}
 	}
 
+//	static boolean didIt = false;
+//	if(!didIt){
+//		didIt = true;
+//		Serial.print("<");
+//		Serial.print(freeRam());
+//		Serial.print(">");
+//
+//	}
+
 }
 
+//TODO:
+//  Should pass length in here so we know how far to search
+//  but I can't right now cause I'm looking for a different
+//  kind of bug and don't want to change it.
 void processRadioBuffer(uint8_t *aBuf) {
 
 	static boolean receiving = false;
@@ -213,13 +226,6 @@ void sendToRadio(char *p) {
 
 void sendToRadio(uint8_t* p, uint8_t aSize){
 	radio.send(p, aSize);
-	if(strcmp((const char*)p, "<RAMCHECK>") == 0){
-		Serial.print("<");
-		Serial.print(freeRam());
-		Serial.print(">");
-	}
-	uint8_t len = strlen((const char*)p);
-	radio.send((uint8_t*) p, len);
 	radio.waitPacketSent();
 }
 
@@ -238,8 +244,13 @@ void handleSerialRaw(char* p) {
 	}
 }
 
-void handleSerial(char* p){
-	if(strcmp(p, "<FFE>") ==  0){
+void handleSerial(char *p) {
+	if (strcmp((const char*) p, "<RAMCHECK>") == 0) {
+		Serial.print("<");
+		Serial.print(freeRam());
+		Serial.print(">");
+	}
+	if (strcmp(p, "<FFE>") == 0) {
 		flush();
 	} else {
 		addToHolding(p);
