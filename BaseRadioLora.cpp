@@ -29,7 +29,7 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 #define DEBUG(x)
 #endif
 
-#define HOLDING_BUFFER_SIZE 20
+#define HOLDING_BUFFER_SIZE 40
 
 #define RFM95_CS 10
 #define RFM95_RST 9
@@ -227,12 +227,12 @@ void flush(){
 
 void handleSerialRaw(char* p) {
 	uint8_t len = p[2];
-//	addToHolding((uint8_t*) p, len);
-//	if(flushOnNextRaw){
-//		flushOnNextRaw = false;
-//		flush();
-//	}
-	sendToRadio((uint8_t*)p, len);
+	addToHolding((uint8_t*) p, len);
+	if(flushOnNextRaw){
+		flushOnNextRaw = false;
+		flush();
+	}
+//	sendToRadio((uint8_t*)p, len);
 }
 
 void handleSerial(char *p) {
@@ -244,7 +244,7 @@ void handleSerial(char *p) {
 	if (strcmp(p, "<FFE>") == 0) {
 		flush();
 	} else {
-//		addToHolding(p);
-		sendToRadio(p);
+		addToHolding(p);
+//		sendToRadio(p);
 	}
 }
