@@ -21,7 +21,7 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 
 #include "BaseRadioLora.h"
 
-//#define DEBUG_OUT Serial
+#define DEBUG_OUT Serial
 
 #ifdef DEBUG_OUT
 #define DEBUG(x) DEBUG_OUT.println(x)
@@ -29,7 +29,7 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 #define DEBUG(x)
 #endif
 
-#define HOLDING_BUFFER_SIZE 40
+#define HOLDING_BUFFER_SIZE 248
 
 #define RFM95_CS 10
 #define RFM95_RST 9
@@ -47,7 +47,7 @@ StreamParser parser(&Serial, START_OF_PACKET, END_OF_PACKET, handleSerial);
 
 
 uint32_t lastFlushTime;
-uint32_t maxFlushInterval = 1000;
+uint32_t maxFlushInterval = 10000;
 
 uint8_t holdingBuffer[HOLDING_BUFFER_SIZE];
 uint8_t holdingSize = 0;
