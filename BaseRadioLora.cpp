@@ -44,11 +44,6 @@ RH_RF95 radio(RFM95_CS, RFM95_INT);
 
 StreamParser parser(&Serial, START_OF_PACKET, END_OF_PACKET, sendToRadio);
 
-int freeRam() {
-  extern int __heap_start, *__brkval;
-  int v;
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
-}
 
 void setup() {
 	pinMode(RFM95_RST, OUTPUT);
@@ -146,43 +141,28 @@ void handleRawRadio(uint8_t *p) {
 
 	int numBytes = p[2];
 	//  If this is the data dump (with the robot LORA adding it's snr and rssi
-	if ((p[1] == 0x13) && (numBytes == ROBOT_DATA_DUMP_SIZE + 2) && (p[numBytes - 1] == '>')) {
-		// add our SNR and RSSI
-		uint8_t newMess[ROBOT_DATA_DUMP_SIZE + 4];
-		memcpy(newMess, p, ROBOT_DATA_DUMP_SIZE + 1); // get everything but the '>'
-		// Add on the snr and rssi values and cap with a new '>'
+	if ((p[1] == 0x13) && (numBytes == ROBOT_DATA_DUMP_SIZE)) {
+		// Add on the snr and rssi values
 		uint8_t snr = (uint8_t) (radio.lastSNR());
 		int rs = radio.lastRssi();
 		uint8_t rssi = (uint8_t) (abs(rs));
-		newMess[2] = ROBOT_DATA_DUMP_SIZE + 4;
-		newMess[ROBOT_DATA_DUMP_SIZE + 1] = snr;
-		newMess[ROBOT_DATA_DUMP_SIZE + 2] = rssi;
-		newMess[ROBOT_DATA_DUMP_SIZE + 3] = '>';
-		numBytes = ROBOT_DATA_DUMP_SIZE + 4;
+		p[ROBOT_DATA_DUMP_SIZE - 3] = snr;
+		p[ROBOT_DATA_DUMP_SIZE - 2] = rssi;
+
+	}
+
+	//  If properly formatted message
+	if ((numBytes < 100) && (p[numBytes - 1] == '>')) {
 		for (int i = 0; i < numBytes; i++) {
-			Serial.write(newMess[i]);
-		}
-
-	} else {
-
-		//  If properly formatted message
-//		Serial.print("<Proper Message>");
-		if ((numBytes < 100) && (p[numBytes - 1] == '>')) {
-			for (int i = 0; i < numBytes; i++) {
-				Serial.write(p[i]);
-			}
+			Serial.write(p[i]);
 		}
 	}
+
 }
 
 
 
 void sendToRadio(char *p) {
-	if(strcmp(p, "<RAMCHECK>") == 0){
-		Serial.print("<");
-		Serial.print(freeRam());
-		Serial.print(">");
-	}
 	uint8_t len = strlen(p);
 	radio.send((uint8_t*) p, len);
 	radio.waitPacketSent();
