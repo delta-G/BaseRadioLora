@@ -21,7 +21,7 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 
 #include "BaseRadioLora.h"
 
-#define DEBUG_OUT Serial
+//#define DEBUG_OUT Serial
 
 #ifdef DEBUG_OUT
 #define DEBUG(x) DEBUG_OUT.println(x)
@@ -117,7 +117,7 @@ void listenToRadio() {
 		uint8_t len = sizeof(buf);
 
 		if (radio.recv(buf, &len)) {
-			processRadioBuffer(buf);
+			processRadioBuffer(buf, len);
 		}
 	}
 }
@@ -126,17 +126,21 @@ void listenToRadio() {
 //  Should pass length in here so we know how far to search
 //  but I can't right now cause I'm looking for a different
 //  kind of bug and don't want to change it.
-void processRadioBuffer(uint8_t *aBuf) {
+void processRadioBuffer(uint8_t *aBuf, uint8_t aLen) {
 
 	static boolean receiving = false;
 	static char commandBuffer[100];
 	static int index;
 
 	flushOnNextRaw = true;
+	uint8_t len = aLen;
+	if(len > MAX_MESSAGE_SIZE_RH){
+		len = MAX_MESSAGE_SIZE_RH;
+	}
 
 	// radio.racv doesn't put any null terminator, so we can't use
 	// string functions, have to scroll through and pick stuff out.
-	for (int i = 0; i < MAX_MESSAGE_SIZE_RH; i++) {
+	for (int i = 0; i < len; i++) {
 		char c = aBuf[i];
 
 		if (c == START_OF_PACKET) {
@@ -168,21 +172,15 @@ void handleRawRadio(uint8_t *p) {
 
 	int numBytes = p[2];
 	//  If this is the data dump (with the robot LORA adding it's snr and rssi
-	if ((p[1] == 0x13) && (numBytes == ROBOT_DATA_DUMP_SIZE + 2) && (p[numBytes - 1] == '>')) {
+	if ((p[1] == 0x13) && (numBytes == ROBOT_DATA_DUMP_SIZE) && (p[numBytes - 1] == '>')) {
 		// add our SNR and RSSI
-		uint8_t newMess[ROBOT_DATA_DUMP_SIZE + 4];
-		memcpy(newMess, p, ROBOT_DATA_DUMP_SIZE + 1); // get everything but the '>'
-		// Add on the snr and rssi values and cap with a new '>'
 		uint8_t snr = (uint8_t) (radio.lastSNR());
 		int rs = radio.lastRssi();
 		uint8_t rssi = (uint8_t) (abs(rs));
-		newMess[2] = ROBOT_DATA_DUMP_SIZE + 4;
-		newMess[ROBOT_DATA_DUMP_SIZE + 1] = snr;
-		newMess[ROBOT_DATA_DUMP_SIZE + 2] = rssi;
-		newMess[ROBOT_DATA_DUMP_SIZE + 3] = '>';
-		numBytes = ROBOT_DATA_DUMP_SIZE + 4;
+		p[ROBOT_DATA_DUMP_SIZE - 3] = snr;
+		p[ROBOT_DATA_DUMP_SIZE - 2] = rssi;
 		for (int i = 0; i < numBytes; i++) {
-			Serial.write(newMess[i]);
+			Serial.write(p[i]);
 		}
 
 	} else {
