@@ -21,7 +21,7 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 
 #include "BaseRadioLora.h"
 
-//#define DEBUG_OUT Serial
+#define DEBUG_OUT Serial
 
 #ifdef DEBUG_OUT
 #define DEBUG(x) DEBUG_OUT.println(x)
@@ -52,7 +52,7 @@ uint32_t maxFlushInterval = 10000;
 uint8_t holdingBuffer[HOLDING_BUFFER_SIZE];
 uint8_t holdingSize = 0;
 
-boolean flushOnNextRaw = true;
+//boolean flushOnNextRaw = true;
 
 
 int freeRam() {
@@ -95,6 +95,8 @@ void setup() {
 	DEBUG(RF95_FREQ);
 
 	radio.setTxPower(23, false);
+
+	DEBUG("Arduino RH-01 UNO Test!");
 }
 
 void loop()
@@ -122,17 +124,14 @@ void listenToRadio() {
 	}
 }
 
-//TODO:
-//  Should pass length in here so we know how far to search
-//  but I can't right now cause I'm looking for a different
-//  kind of bug and don't want to change it.
+
 void processRadioBuffer(uint8_t *aBuf, uint8_t aLen) {
 
 	static boolean receiving = false;
 	static char commandBuffer[100];
 	static int index;
 
-	flushOnNextRaw = true;
+//	flushOnNextRaw = true;
 	uint8_t len = aLen;
 	if(len > MAX_MESSAGE_SIZE_RH){
 		len = MAX_MESSAGE_SIZE_RH;
@@ -226,10 +225,11 @@ void flush(){
 void handleSerialRaw(char* p) {
 	uint8_t len = p[2];
 	addToHolding((uint8_t*) p, len);
-	if(flushOnNextRaw){
-		flushOnNextRaw = false;
-		flush();
-	}
+//	if(flushOnNextRaw){
+//		flushOnNextRaw = false;
+//		flush();
+//	}
+	flush();
 //	sendToRadio((uint8_t*)p, len);
 }
 
@@ -240,6 +240,7 @@ void handleSerial(char *p) {
 		Serial.print(">");
 	}
 	if (strcmp(p, "<FFE>") == 0) {
+		DEBUG("FLUSHING ON COMMAND");
 		flush();
 	} else {
 		addToHolding(p);
