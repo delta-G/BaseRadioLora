@@ -21,7 +21,7 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 
 #include "BaseRadioLora.h"
 
-//#define DEBUG_OUT Serial
+#define DEBUG_OUT Serial
 
 #ifdef DEBUG_OUT
 #define DEBUG(x) DEBUG_OUT.println(x)
@@ -29,6 +29,7 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 #define DEBUG(x)
 #endif
 
+#define HOLDING_BUFFER_SIZE 248
 
 #define RFM95_CS 10
 #define RFM95_RST 9
@@ -42,14 +43,25 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 
 RH_RF95 radio(RFM95_CS, RFM95_INT);
 
-StreamParser parser(&Serial, START_OF_PACKET, END_OF_PACKET, sendToRadio);
+StreamParser parser(&Serial, START_OF_PACKET, END_OF_PACKET, handleSerial);
+
+
+uint32_t lastFlushTime;
+uint32_t maxFlushInterval = 10000;
+
+uint8_t holdingBuffer[HOLDING_BUFFER_SIZE];
+uint8_t holdingSize = 0;
+
+//boolean flushOnNextRaw = true;
+
+
 
 
 void setup() {
 	pinMode(RFM95_RST, OUTPUT);
 	digitalWrite(RFM95_RST, HIGH);
 
-	parser.setRawCallback(sendToRadioRaw);
+	parser.setRawCallback(handleSerialRaw);
 
 	Serial.begin(115200);
 	delay(100);
@@ -79,12 +91,20 @@ void setup() {
 	DEBUG(RF95_FREQ);
 
 	radio.setTxPower(23, false);
+
+	DEBUG("Arduino RH-01 UNO Test!");
 }
 
 void loop()
 {
 	listenToRadio();
 	parser.run();
+	if (holdingSize == 0){
+		lastFlushTime = millis();  // don't start timer if we don't have anything to send.
+	}
+	if(millis() - lastFlushTime >= maxFlushInterval){
+		flush();
+	}
 }
 
 
@@ -95,21 +115,27 @@ void listenToRadio() {
 		uint8_t len = sizeof(buf);
 
 		if (radio.recv(buf, &len)) {
-			processRadioBuffer(buf);
+			processRadioBuffer(buf, len);
 		}
 	}
-
 }
 
-void processRadioBuffer(uint8_t *aBuf) {
+
+void processRadioBuffer(uint8_t *aBuf, uint8_t aLen) {
 
 	static boolean receiving = false;
 	static char commandBuffer[100];
 	static int index;
 
+//	flushOnNextRaw = true;
+	uint8_t len = aLen;
+	if(len > MAX_MESSAGE_SIZE_RH){
+		len = MAX_MESSAGE_SIZE_RH;
+	}
+
 	// radio.racv doesn't put any null terminator, so we can't use
 	// string functions, have to scroll through and pick stuff out.
-	for (int i = 0; i < MAX_MESSAGE_SIZE_RH; i++) {
+	for (int i = 0; i < len; i++) {
 		char c = aBuf[i];
 
 		if (c == START_OF_PACKET) {
@@ -141,37 +167,78 @@ void handleRawRadio(uint8_t *p) {
 
 	int numBytes = p[2];
 	//  If this is the data dump (with the robot LORA adding it's snr and rssi
-	if ((p[1] == 0x13) && (numBytes == ROBOT_DATA_DUMP_SIZE)) {
-		// Add on the snr and rssi values
+
+	if ((p[1] == 0x13) && (numBytes == ROBOT_DATA_DUMP_SIZE) && (p[numBytes - 1] == '>')) {
+		// add our SNR and RSSI
 		uint8_t snr = (uint8_t) (radio.lastSNR());
 		int rs = radio.lastRssi();
 		uint8_t rssi = (uint8_t) (abs(rs));
 		p[ROBOT_DATA_DUMP_SIZE - 3] = snr;
 		p[ROBOT_DATA_DUMP_SIZE - 2] = rssi;
 
-	}
 
-	//  If properly formatted message
-	if ((numBytes < 100) && (p[numBytes - 1] == '>')) {
 		for (int i = 0; i < numBytes; i++) {
 			Serial.write(p[i]);
+		}
+
+	} else {
+
+		//  If properly formatted message
+//		Serial.print("<Proper Message>");
+		if ((numBytes < 100) && (p[numBytes - 1] == '>')) {
+			for (int i = 0; i < numBytes; i++) {
+				Serial.write(p[i]);
+			}
 		}
 	}
 
 }
 
+void addToHolding(uint8_t* p, uint8_t aSize){
+	if(HOLDING_BUFFER_SIZE - holdingSize < aSize){
+		//  Not enough room so clear the buffer now
+		flush();
+	}
+	memcpy(holdingBuffer + holdingSize, p, aSize);
+	holdingSize += aSize;
+}
 
+void addToHolding(char* p){
+	addToHolding((uint8_t*)p, strlen(p));
+}
 
 void sendToRadio(char *p) {
-	uint8_t len = strlen(p);
-	radio.send((uint8_t*) p, len);
+	sendToRadio((uint8_t*) p, strlen(p));
+}
+
+void sendToRadio(uint8_t* p, uint8_t aSize){
+	radio.send(p, aSize);
 	radio.waitPacketSent();
 }
 
-void sendToRadioRaw(char* p) {
+void flush(){
+	sendToRadio(holdingBuffer, holdingSize);
+	holdingSize = 0;
+	lastFlushTime = millis();
+}
+
+void handleSerialRaw(char* p) {
 	uint8_t len = p[2];
-	radio.send((uint8_t*) p, len);
-	radio.waitPacketSent();
+	addToHolding((uint8_t*) p, len);
+//	if(flushOnNextRaw){
+//		flushOnNextRaw = false;
+//		flush();
+//	}
+	flush();
+//	sendToRadio((uint8_t*)p, len);
 }
 
-
+void handleSerial(char *p) {
+	if (strcmp(p, "<FFE>") == 0) {
+		DEBUG("FLUSHING ON COMMAND");
+		flush();
+	} else {
+		addToHolding(p);
+//		sendToRadio(p);
+	}
+}
