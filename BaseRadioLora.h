@@ -37,9 +37,11 @@ void setup();
 void loop();
 
 void processRadioBuffer(uint8_t*, uint8_t);
+void handleRadioCommand(char*);
 void handleRawRadio(uint8_t*);
 void handleSerialRaw(char*);
 void handleSerial(char*);
+void handleConfigString(char*);
 
 void sendToRadio(char*);
 void sendToRadio(uint8_t*, uint8_t);
