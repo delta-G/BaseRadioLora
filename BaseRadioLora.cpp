@@ -237,8 +237,11 @@ void handleSerial(char *p) {
 		flush();
 	} else {
 		if (p[1] == 'l') {
-			addToHolding(p);
-			flush();
+//			addToHolding(p);
+//			flush();
+			delay(500);
+			sendToRadio(p);
+			delay(500);
 			handleConfigString(p);
 		} else {
 			addToHolding(p);
