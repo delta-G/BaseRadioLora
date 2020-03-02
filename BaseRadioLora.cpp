@@ -52,9 +52,31 @@ uint8_t holdingSize = 0;
 
 //boolean flushOnNextRaw = true;
 
+uint8_t heartPins[3] = {3,5,6};
+uint16_t heartDelay[3] = {0,0,0};
+uint32_t lastHeart[3] = {0,0,0};
+
+void heartbeat(){
+	uint32_t cur = millis();
+	for(uint8_t i=0; i<3; i++){
+		if(heartDelay[i] == 0){
+			digitalWrite(heartPins[i], LOW);
+		} else if(heartDelay[i] == 1){
+			digitalWrite(heartPins[i], HIGH);
+		} else if(cur - lastHeart[i] >= heartDelay[i]){
+			digitalWrite(heartPins[i], !digitalRead(heartPins[i]));
+			lastHeart[i] = cur;
+		}
+	}
+}
+
 void setup() {
 	pinMode(RFM95_RST, OUTPUT);
 	digitalWrite(RFM95_RST, HIGH);
+
+	pinMode(3, OUTPUT);
+	pinMode(5, OUTPUT);
+	pinMode(6, OUTPUT);
 
 	parser.setRawCallback(handleSerialRaw);
 
@@ -88,9 +110,23 @@ void setup() {
 	radio.setTxPower(23, false);
 
 	DEBUG("Arduino RH-01 UNO Test!");
+
+	heartDelay[1] = 500;
+//	heartDelay[2] = 100;
 }
 
 void loop() {
+
+//	static unsigned int counter = 0;
+//	if(counter % 100 == 0){
+//		Serial.print("<LOOP ");
+//		Serial.print(counter);
+//		Serial.print(" , ");
+//		Serial.print(millis());
+//		Serial.print(">");
+//	}
+//	counter++;
+
 	listenToRadio();
 	parser.run();
 	if (holdingSize == 0) {
@@ -99,6 +135,16 @@ void loop() {
 	if (millis() - lastFlushTime >= maxFlushInterval) {
 		flush();
 	}
+	heartbeat();
+//	if(counter % 100 == 0){
+//		Serial.print("<END ");
+//		Serial.print(counter);
+//		Serial.print(" , ");
+//		Serial.print(millis());
+//		Serial.print(">");
+//	}
+//	counter++;
+
 }
 
 void listenToRadio() {
@@ -156,7 +202,7 @@ void processRadioBuffer(uint8_t *aBuf, uint8_t aLen) {
 
 void handleRadioCommand(char *p) {
 	if (p[1] == 'l') {
-		handleConfigString(p);
+//		handleConfigString(p);
 	}
 	Serial.print(p);
 }
@@ -239,9 +285,8 @@ void handleSerial(char *p) {
 		if (p[1] == 'l') {
 //			addToHolding(p);
 //			flush();
-			delay(500);
 			sendToRadio(p);
-			delay(500);
+			delay(2000);
 			handleConfigString(p);
 		} else {
 			addToHolding(p);
@@ -251,28 +296,38 @@ void handleSerial(char *p) {
 }
 
 void handleConfigString(char *p) {
+//	char mes[6] = {0};
+//	memcpy(mes, p, 5);
+//	mes[5] = 0;
+//	Serial.print("<MODE PICK>");
+//	Serial.print(mes);
 	switch (p[2]) {
 	case 'M': {
 		// set mode 0-3 from setModemConfig
-		uint8_t entry = atoi((const char*) (p + 3));
-		if (entry > 3) {
-			entry = 3;
-		}
-		switch (entry) {
-		case 0:
+//		uint8_t entry = atoi((const char*) (p + 3));
+//		if (entry > 3) {
+//			entry = 3;
+//		}
+		switch (p[3]) {
+		case '0':
 			radio.setModemConfig(RH_RF95::Bw125Cr45Sf128);
+			heartDelay[1] = 1000;
 			break;
-		case 1:
+		case '1':
 			radio.setModemConfig(RH_RF95::Bw500Cr45Sf128);
+			heartDelay[1] = 500;
 			break;
-		case 2:
+		case '2':
 			radio.setModemConfig(RH_RF95::Bw31_25Cr48Sf512);
+			heartDelay[1] = 200;
 			break;
-		case 3:
+		case '3':
 			radio.setModemConfig(RH_RF95::Bw125Cr48Sf4096);
+			heartDelay[1] = 1500;
 			break;
 		default:
 			radio.setModemConfig(RH_RF95::Bw125Cr45Sf128);
+			heartDelay[1] = 50;
 			break;
 
 		}
@@ -286,7 +341,7 @@ void handleConfigString(char *p) {
 		break;
 	}
 	case 'S': {
-		// set mode 0-3 from setModemConfig
+		// set spreading factor 6 - 12
 		uint8_t entry = atoi((const char*) (p + 3));
 		if (entry > 3) {
 			entry = 3;
@@ -295,7 +350,7 @@ void handleConfigString(char *p) {
 		break;
 	}
 	case 'C': {
-		// set mode 0-3 from setModemConfig
+		// set coding Rate Denominator 5 - 8
 		uint8_t entry = atoi((const char*) (p + 3));
 		if (entry > 3) {
 			entry = 3;
@@ -303,7 +358,49 @@ void handleConfigString(char *p) {
 		radio.setCodingRate4(entry);
 		break;
 	}
+	case 'R': {
+		//reset the radio
+		resetRadio();
+		break;
+	}
 	default:
 		break;
 	} // end switch
 }
+
+
+
+void resetRadio() {
+
+	// manual reset
+	digitalWrite(RFM95_RST, LOW);
+	delay(10);
+	digitalWrite(RFM95_RST, HIGH);
+	delay(10);
+
+	while (!radio.init()) {
+		DEBUG("LoRa radio init failed");
+		while (1)
+			;
+	}
+	DEBUG("LoRa radio init OK!");
+
+	// Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM
+	if (!radio.setFrequency(RF95_FREQ)) {
+		DEBUG("setFrequency failed");
+		while (1)
+			;
+	}
+	DEBUG("Set Freq to: ");
+	DEBUG(RF95_FREQ);
+
+	radio.setTxPower(23, false);
+
+}
+
+
+
+
+
+
+///  END

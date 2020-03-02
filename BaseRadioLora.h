@@ -35,6 +35,9 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 
 void setup();
 void loop();
+void heartbeat();
+
+void resetRadio();
 
 void processRadioBuffer(uint8_t*, uint8_t);
 void handleRadioCommand(char*);
