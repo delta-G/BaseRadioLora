@@ -23,7 +23,7 @@
 
 #include "RadioCommon.h"
 
-RH_RF95 radio(RFM95_CS, RFM95_INT);
+extern RH_RF95 radio;
 
 extern void handleRawRadio(uint8_t *p);
 extern void handleRadioCommand(char *p);
@@ -35,6 +35,11 @@ uint8_t holdingSize = 0;
 uint32_t lastFlushTime;
 uint32_t maxFlushInterval = 10000;
 
+void initRadio(){
+	pinMode(RFM95_RST, OUTPUT);
+	digitalWrite(RFM95_RST, HIGH);
+
+}
 
 void listenToRadio() {
 	if (radio.available()) {
@@ -48,6 +53,14 @@ void listenToRadio() {
 	}
 }
 
+void handleOutput(){
+	if (holdingSize == 0) {
+		lastFlushTime = millis(); // don't start timer if we don't have anything to send.
+	}
+	if (millis() - lastFlushTime >= maxFlushInterval) {
+		flush();
+	}
+}
 
 void processRadioBuffer(uint8_t *aBuf, uint8_t aLen) {
 

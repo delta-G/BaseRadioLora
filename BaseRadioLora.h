@@ -32,6 +32,8 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 
 #include <StreamParser.h>
 
+#include "RadioCommon.h"
+
 
 void setup();
 void loop();

@@ -51,8 +51,10 @@
 //  This currently works out to 251  (255 buffer size - 4 byte header)
 #define MAX_MESSAGE_SIZE_RH RH_RF95_MAX_MESSAGE_LEN
 
+void initRadio();
 
 void listenToRadio();
+void handleOutput();
 void processRadioBuffer(uint8_t*, uint8_t);
 
 void addToHolding(uint8_t*, uint8_t);
