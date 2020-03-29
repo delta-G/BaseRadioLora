@@ -37,6 +37,9 @@ uint8_t heartPins[3] = {3,5,6};
 uint16_t heartDelay[3] = {0,0,0};
 uint32_t lastHeart[3] = {0,0,0};
 
+uint32_t pingTimerStart;
+uint32_t pingTimerSent;
+
 void heartbeat(){
 	uint32_t cur = millis();
 	for(uint8_t i=0; i<3; i++){
@@ -104,8 +107,11 @@ void loop() {
 
 
 void handleRadioCommand(char *p) {
-	if (p[1] == 'l') {
-//		handleConfigString(p);
+	if (p[1] == 'p') {
+		uint32_t endT = millis();
+		char resp[25];
+		snprintf(resp, 25, "<s%ul;r%ul>", (pingTimerSent - pingTimerStart) , (endT - pingTimerStart));
+		Serial.print(resp);
 	}
 	Serial.print(p);
 }
@@ -165,6 +171,10 @@ void handleSerial(char *p) {
 			sendToRadio(p);
 			delay(2000);
 			handleConfigString(p);
+		} else if (p[1] == 'P') {
+			pingTimerStart = millis();
+			sendToRadio(p);
+			pingTimerSent = millis();
 		} else {
 			addToHolding(p);
 //		sendToRadio(p);
