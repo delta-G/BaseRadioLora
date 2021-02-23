@@ -39,21 +39,12 @@ void setup();
 void loop();
 void heartbeat();
 
-void resetRadio();
 
-void processRadioBuffer(uint8_t*, uint8_t);
 void handleRadioCommand(char*);
+void handleSerialCommand(char*);
+void handleRawSerial(char*);
 void handleRawRadio(uint8_t*);
-void handleSerialRaw(char*);
-void handleSerial(char*);
-void handleConfigString(char*);
 
-void sendToRadio(char*);
-void sendToRadio(uint8_t*, uint8_t);
-void listenToRadio();
 
-void addToHolding(uint8_t*, uint8_t);
-void addToHolding(char*);
-void flush();
 
 #endif /* _RH_01_H_ */
