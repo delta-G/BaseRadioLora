@@ -24,6 +24,8 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 #include "Arduino.h"
 
 #include <SPI.h>
+//#define RH_RF95_MAX_MESSAGE_LEN RADIO_BUFFER_SIZE
+//#define STREAMPARSER_BUFFER_SIZE RADIO_BUFFER_SIZE
 
 
 #include <RH_RF95.h>

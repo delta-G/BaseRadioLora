@@ -66,11 +66,11 @@ void setup() {
 	Serial.begin(115200);
 	delay(100);
 
-	MYDEBUG("<Arduino RH-01 UNO Test!>");
+	MYDEBUG(F("<Arduino RH-01 UNO Test!>"));
 
 	resetRadio();
 
-	MYDEBUG("<Radio has Initialized.>");
+	MYDEBUG(F("<Radio has Initialized.>"));
 
 	heartBeatDelay = 500;
 }
@@ -91,6 +91,9 @@ void handleRadioCommand(char *p) {
 		char resp[25];
 		snprintf(resp, 25, "<s%lu;r%lu>", (pingTimerSent - pingTimerStart) , (millis() - pingTimerStart));
 		Serial.print(resp);
+	}
+	if (!strcmp(p, "<RRMMBB  HHBBooRR>")) {
+		Serial.print(F("<FOUND_IT>"));
 	}
 	Serial.print(p);
 }
@@ -117,7 +120,7 @@ void handleRawRadio(uint8_t *p) {
 
 		//  If properly formatted message
 //		Serial.print("<Proper Message>");
-		if ((numBytes < 100) && (p[numBytes - 1] == '>')) {
+		if ((numBytes <= HOLDING_BUFFER_SIZE) && (p[numBytes - 1] == '>')) {
 			for (int i = 0; i < numBytes; i++) {
 				Serial.write(p[i]);
 			}
@@ -141,7 +144,7 @@ void handleRawSerial(char *p) {
 
 void handleSerialCommand(char *p) {
 	if (strcmp(p, "<FFE>") == 0) {
-		MYDEBUG("<FLUSHING ON COMMAND>");
+		MYDEBUG(F("<FLUSHING ON COMMAND>"));
 		flush();
 	} else {
 		if (p[1] == 'l') {
@@ -151,12 +154,12 @@ void handleSerialCommand(char *p) {
 			delay(2000);
 			handleConfigString(p);
 		} else if (p[1] == 'P') {
-			MYDEBUG("<PINGING RADIO>");
+			MYDEBUG(F("<PINGING RADIO>"));
 			pingTimerStart = millis();
 			sendToRadio(p);
 			pingTimerSent = millis();
 		} else if (p[1] == 'r') {
-			Serial.println("<Responding to Serial>");
+			Serial.println(F("<Responding to Serial>"));
 		} else {
 			addToHolding(p);
 //		sendToRadio(p);
