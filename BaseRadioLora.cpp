@@ -21,7 +21,7 @@
 
 #include "BaseRadioLora.h"
 
-#define MYDEBUG_OUT Serial
+//#define MYDEBUG_OUT Serial
 
 #ifdef MYDEBUG_OUT
 #define MYDEBUG(x) MYDEBUG_OUT.println(x)
@@ -92,9 +92,6 @@ void handleRadioCommand(char *p) {
 		snprintf(resp, 25, "<s%lu;r%lu>", (pingTimerSent - pingTimerStart) , (millis() - pingTimerStart));
 		Serial.print(resp);
 	}
-	if (!strcmp(p, "<RRMMBB  HHBBooRR>")) {
-		Serial.print(F("<FOUND_IT>"));
-	}
 	Serial.print(p);
 }
 
@@ -104,7 +101,7 @@ void handleRawRadio(uint8_t *p) {
 	//  If this is the data dump (with the robot LORA adding it's snr and rssi
 
 	if ((p[1] == 0x13) && (numBytes == ROBOT_DATA_DUMP_SIZE)
-		/*	&& (p[numBytes - 1] == '>')*/) {
+	/*	&& (p[numBytes - 1] == '>')*/) {
 		// add our SNR and RSSI
 		uint8_t snr = (uint8_t) (radio.lastSNR());
 		int rs = radio.lastRssi();
@@ -112,19 +109,10 @@ void handleRawRadio(uint8_t *p) {
 		p[ROBOT_DATA_DUMP_SIZE - 3] = snr;
 		p[ROBOT_DATA_DUMP_SIZE - 2] = rssi;
 
-		for (int i = 0; i < numBytes; i++) {
-			Serial.write(p[i]);
-		}
+	}
 
-	} else {
-
-		//  If properly formatted message
-//		Serial.print("<Proper Message>");
-		if ((numBytes <= HOLDING_BUFFER_SIZE) && (p[numBytes - 1] == '>')) {
-			for (int i = 0; i < numBytes; i++) {
-				Serial.write(p[i]);
-			}
-		}
+	for (int i = 0; i < numBytes; i++) {
+		Serial.write(p[i]);
 	}
 
 }
