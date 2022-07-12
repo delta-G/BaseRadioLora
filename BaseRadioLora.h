@@ -36,6 +36,9 @@ BaseRadioLora  --  runs on Arduino Nano and acts as a serial to LoRa bridge
 
 #include <RadioCommon.h>
 
+#define RFM95_CS 10
+#define RFM95_RST 9
+#define RFM95_INT 2
 
 void setup();
 void loop();

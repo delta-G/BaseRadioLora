@@ -56,7 +56,7 @@ void heartbeat(){
 
 void setup() {
 
-	initRadio();
+	initRadio(RFM95_RST);
 
 
 	pinMode(heartBeatPin, OUTPUT);
