@@ -131,10 +131,20 @@ void handleRawSerial(char *p) {
 }
 
 void handleSerialCommand(char *p) {
+	if (strcmp(p, "<BASE_GIT>") == 0) {
+		MYDEBUG(F("<GITHASH>"));
+		char gitbuf[9];
+		strncpy(gitbuf, GIT_HASH, 8);
+		gitbuf[8] = 0;
+		Serial.print(F("<BASE-RADIO-GIT-"));
+		Serial.print(gitbuf);
+		Serial.print(F(">"));
+	}
 	if (strcmp(p, "<FFE>") == 0) {
 		MYDEBUG(F("<FLUSHING ON COMMAND>"));
 		flush();
 	} else {
+		// Configure lora mode
 		if (p[1] == 'l') {
 //			addToHolding(p);
 //			flush();
