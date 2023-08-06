@@ -85,7 +85,6 @@ void loop() {
 }
 
 
-
 void handleRadioCommand(char *p) {
 	if (p[1] == 'p') {
 		char resp[25];
